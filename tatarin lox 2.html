@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Опрос: Порим татарина?</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none; /* легкий эффект, чтобы клики не выделяли текст */
+        }
+
+        body {
+            background-color: #ffffff; /* строгий белый фон */
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: system-ui, 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+
+        /* главный блок опроса — зеленый фон, по центру */
+        .poll-container {
+            background-color: #2e7d32; /* насыщенный зеленый */
+            border-radius: 2rem;
+            padding: 2rem 1.8rem 2.2rem 1.8rem;
+            box-shadow: 0 20px 35px -12px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255,255,255,0.2);
+            max-width: 550px;
+            width: 100%;
+            text-align: center;
+            transition: all 0.2s ease;
+        }
+
+        @media (max-width: 480px) {
+            .poll-container {
+                padding: 1.5rem 1.2rem 1.8rem 1.2rem;
+                border-radius: 1.5rem;
+            }
+        }
+
+        /* название опроса */
+        .poll-title {
+            font-size: 1.9rem;
+            font-weight: 800;
+            letter-spacing: -0.3px;
+            color: #f9f7e8;
+            text-shadow: 2px 2px 0 #1b5e20;
+            margin-bottom: 1.8rem;
+        }
+
+        /* контейнер кнопок: гибкая раскладка */
+        .options {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 1rem;
+            margin-top: 0.5rem;
+        }
+
+        /* общий стиль кнопок ответа */
+        .option-btn {
+            background: #fef9e0;
+            border: none;
+            padding: 0.85rem 1.5rem;
+            font-size: 1.2rem;
+            font-weight: 600;
+            border-radius: 60px;
+            color: #1b4d1f;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+            box-shadow: 0 5px 0 #9e9a6b;
+            font-family: inherit;
+            flex: 0 1 auto;
+            min-width: 130px;
+            letter-spacing: 0.3px;
+        }
+
+        .option-btn:active {
+            transform: translateY(3px);
+            box-shadow: 0 2px 0 #9e9a6b;
+        }
+
+        .option-btn:hover {
+            background: #fff3cf;
+            transform: translateY(-1px);
+            box-shadow: 0 7px 0 #9e9a6b;
+        }
+
+        /* область для вывода сообщений */
+        .message-area {
+            margin-top: 2rem;
+            min-height: 4.8rem;
+            font-size: 1.35rem;
+            font-weight: bold;
+            color: #f9f2c7;
+            background: rgba(0, 0, 0, 0.25);
+            border-radius: 3rem;
+            padding: 0.7rem 1rem;
+            backdrop-filter: blur(3px);
+            transition: all 0.2s;
+            text-align: center;
+            word-break: break-word;
+            line-height: 1.4;
+        }
+
+        /* анимация появления сообщения */
+        @keyframes messagePop {
+            0% {
+                opacity: 0;
+                transform: scale(0.94) translateY(6px);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        .message-show {
+            animation: messagePop 0.27s ease-out forwards;
+        }
+
+        /* ничего лишнего вокруг */
+        footer, header, aside {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<div class="poll-container">
+    <h1 class="poll-title">Порим татарина?</h1>
+    <div class="options">
+        <!-- первая кнопка: "да" -->
+        <button class="option-btn" data-answer-type="positive" data-variant="да">да</button>
+        
+        <!-- изменённая кнопка: теперь просто "нет" -->
+        <button class="option-btn" data-answer-type="negative_forbidden" data-variant="нет">нет</button>
+        
+        <!-- третья кнопка: "да(но потом)" -->
+        <button class="option-btn" data-answer-type="positive" data-variant="да(но потом)">да(но потом)</button>
+    </div>
+    <div id="feedbackMessage" class="message-area">
+        <!-- пустая область, сообщения появляются динамически -->
+    </div>
+</div>
+
+<script>
+    (function() {
+        const feedbackDiv = document.getElementById('feedbackMessage');
+        const buttons = document.querySelectorAll('.option-btn');
+        
+        // Фраза для «хороших» ответов (да и да(но потом))
+        const GOOD_PHRASE = "молодец, татарин будет отпорен";
+        
+        // Фраза для кнопки "нет" (бывшая "нет(да)")
+        const FORBIDDEN_PHRASE = "фу, такое нажимать нельзя";
+        
+        // Функция для отображения сообщения с анимацией и обновлением текста
+        function setMessage(text, isWarning = false) {
+            // Устанавливаем текст
+            feedbackDiv.textContent = text;
+            
+            // Добавляем класс анимации; если нужно добавить особый стиль для "запрещёнки" — можно, но не обязательно
+            // Сбрасываем анимацию, чтобы она переигрывалась при каждом клике
+            feedbackDiv.style.animation = 'none';
+            // форсируем reflow для перезапуска анимации
+            void feedbackDiv.offsetHeight;
+            feedbackDiv.style.animation = null;
+            feedbackDiv.classList.remove('message-show');
+            // небольшая задержка для перезапуска
+            setTimeout(() => {
+                feedbackDiv.classList.add('message-show');
+            }, 5);
+            
+            // опционально: если нужно визуально подчеркнуть "плохой" ответ, можно изменить фон сообщения
+            // Но по ТЗ просто надпись — оставим классическим. 
+            // Однако добавим лёгкий дополнительный стиль только для наглядности (не конфликтует)
+            if (isWarning) {
+                // добавим лёгкое временное "покачивание" или тень — не обязательно, но для экспрессии
+                feedbackDiv.style.transition = 'background 0.1s';
+                feedbackDiv.style.background = 'rgba(180, 50, 40, 0.5)';
+                setTimeout(() => {
+                    feedbackDiv.style.background = 'rgba(0, 0, 0, 0.25)';
+                }, 280);
+            } else {
+                feedbackDiv.style.background = 'rgba(0, 0, 0, 0.25)';
+            }
+        }
+        
+        // Обработчик нажатия на кнопки
+        function onAnswerClick(event) {
+            const btn = event.currentTarget;
+            const answerType = btn.getAttribute('data-answer-type');
+            const variant = btn.getAttribute('data-variant'); // для логов, если нужно
+            
+            // Логика вывода сообщений:
+            // - Если кнопка с типом "negative_forbidden" (то есть "нет") -> выводим запрещающую фразу
+            // - Иначе (да / да(но потом)) -> выводим хвалебную фразу "молодец, татарин будет отпорен"
+            
+            if (answerType === 'negative_forbidden') {
+                // Нажали на "нет" — выводим предупреждение
+                setMessage(FORBIDDEN_PHRASE, true);
+                
+                // Небольшая вибрация при "плохом" выборе для тактильного фидбека (если поддерживается)
+                if (window.navigator && window.navigator.vibrate) {
+                    window.navigator.vibrate(50); // короткая вибрация, чтобы подчеркнуть "нельзя"
+                }
+            } 
+            else if (answerType === 'positive') {
+                // Любой из "да" или "да(но потом)" — отличный ответ
+                setMessage(GOOD_PHRASE, false);
+                
+                // приятная легкая вибрация для хорошего выбора (опционально)
+                if (window.navigator && window.navigator.vibrate) {
+                    window.navigator.vibrate(15);
+                }
+            }
+            else {
+                // fallback на всякий случай (если структура data-атрибутов нарушена)
+                setMessage(GOOD_PHRASE, false);
+            }
+            
+            // Можно добавить консоль для отладки (не мешает пользователю)
+            // console.log(`Выбран вариант: ${variant} (тип: ${answerType})`);
+        }
+        
+        // Вешаем обработчики на все кнопки
+        buttons.forEach(btn => {
+            btn.addEventListener('click', onAnswerClick);
+        });
+        
+        // Инициализация: сообщение отсутствует, класс анимации убран
+        feedbackDiv.textContent = '';
+        feedbackDiv.classList.remove('message-show');
+        feedbackDiv.style.background = 'rgba(0, 0, 0, 0.25)';
+        
+        // дополнительные плюшки: если пользователь кликает несколько раз, сообщение обновляется без багов
+        // все корректно отрабатывает через setMessage
+    })();
+</script>
+</body>
+</html>
